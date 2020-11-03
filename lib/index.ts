@@ -1,18 +1,16 @@
-import path from "path";
-import fs from "fs";
-const Q = require('q');
-import _ from "underscore";
-import ejs from "ejs";
-import cheerio from "cheerio";
-import entities from "entities";
-import request from "superagent";
-require("superagent-proxy")(request);
-import { remove as removeDiacritics } from "diacritics";
-import mime from "mime";
-import archiver from "archiver";
+import path from 'path';
+import fs from 'fs';
+import ejs from 'ejs';
+import cheerio from 'cheerio';
+import entities from 'entities';
+import request from 'superagent';
+require('superagent-proxy')(request);
+import { remove as removeDiacritics } from 'diacritics';
+import mime from 'mime';
+import archiver from 'archiver';
 import { v4 } from 'uuid';
+import rimraf from 'rimraf';
 
-import rimraf from "rimraf";
 import { EpubOptions, IPubOptions, isEmpty, isString, IImage, allowedAttributes, allowedXhtml11Tags, toId } from './helpers';
 
 class EPub {
@@ -29,25 +27,23 @@ class EPub {
     }
 
     if (!this.options.output) {
-      console.error(new Error("No Output Path"));
-      Promise.reject(new Error("No output path"));
-      return;
+      console.error(new Error('No Output Path'));
+      throw new Error('No output path');
     }
 
     if (!options.title || !options.content) {
-      console.error(new Error("Title and content are both required"));
-      Promise.reject(new Error("Title and content are both required"));
-      return;
+      console.error(new Error('Title and content are both required'));
+      throw new Error('Title and content are both required');
     }
 
     this.options = {
       description: options.title,
-      publisher: "anonymous",
-      author: ["anonymous"],
-      tocTitle: "Table Of Contents",
+      publisher: 'anonymous',
+      author: ['anonymous'],
+      tocTitle: 'Table Of Contents',
       appendChapterTitles: true,
       date: new Date().toISOString(),
-      lang: "en",
+      lang: 'en',
       fonts: [],
       customOpfTemplatePath: null,
       customNcxTocTemplatePath: null,
@@ -72,10 +68,10 @@ class EPub {
       this.options.author = [this.options.author];
     }
     if (isEmpty(this.options.author)) {
-      this.options.author = ["anonymous"];
+      this.options.author = ['anonymous'];
     }
     if (!this.options.tempDir) {
-      this.options.tempDir = path.resolve(__dirname, "../tempDir/");
+      this.options.tempDir = path.resolve(__dirname, '../tempDir/');
     }
     this.id = v4();
     this.uuid = path.resolve(this.options.tempDir, this.id);
@@ -84,7 +80,7 @@ class EPub {
     this.options.images = [];
     this.options.content = this.options.content.map((content, index) => {
       if (!content.filename) {
-        const titleSlug = toId(removeDiacritics(content.title || "no title"));
+        const titleSlug = toId(removeDiacritics(content.title || 'no title'));
         content.href = `${index}_${titleSlug}.xhtml`;
         content.filePath = path.resolve(
           this.uuid,
@@ -118,7 +114,7 @@ class EPub {
 
       //fix Author Array
       content.author =
-        content.author && _.isString(content.author)
+        content.author && isString(content.author)
           ? [content.author]
           : !content.author || !Array.isArray(content.author)
             ? []
@@ -133,25 +129,25 @@ class EPub {
       });
 
       // Only body innerHTML is allowed
-      if ($("body").length) {
-        $ = cheerio.load($("body").html(), {
+      if ($('body').length) {
+        $ = cheerio.load($('body').html(), {
           lowerCaseTags: true,
           recognizeSelfClosing: true,
         });
       }
-      $($("*").get().reverse()).each((elemIndex, elem) => {
+      $($('*').get().reverse()).each((elemIndex, elem) => {
         const attrs = elem.attribs;
-        if (["img", "br", "hr"].includes(this.name)) {
-          if (this.name === "img") {
-            $(this).attr("alt", $(this).attr("alt") || "image-placeholder");
+        if (['img', 'br', 'hr'].includes(this.name)) {
+          if (this.name === 'img') {
+            $(this).attr('alt', $(this).attr('alt') || 'image-placeholder');
           }
         }
 
         for (let k in attrs) {
           const v = attrs[k];
           if (allowedAttributes.includes(k)) {
-            if (k === "type") {
-              if (this.name !== "script") {
+            if (k === 'type') {
+              if (this.name !== 'script') {
                 $(this).removeAttr(k);
               }
             }
@@ -164,20 +160,20 @@ class EPub {
           } else {
             if (this.options.verbose) {
               console.log(
-                "Warning (content[" + index + "]):",
+                'Warning (content[' + index + ']):',
                 this.name,
-                "tag isn't allowed on EPUB 2/XHTML 1.1 DTD."
+                'tag isn\'t allowed on EPUB 2/XHTML 1.1 DTD.'
               );
             }
             const child = $(this).html();
-            return $(this).replaceWith($("<div>" + child + "</div>"));
+            return $(this).replaceWith($('<div>' + child + '</div>'));
           }
         }
       });
 
-      $("img").each((index, elem) => {
+      $('img').each((index, elem) => {
         let extension, id, image;
-        const url = $(elem).attr("src");
+        const url = $(elem).attr('src');
         if (
           (image = this.options.images.find((element) => element.url === url))
         ) {
@@ -185,12 +181,12 @@ class EPub {
           ({ extension } = image);
         } else {
           id = v4();
-          const mediaType = mime.getType(url.replace(/\?.*/, ""));
+          const mediaType = mime.getType(url.replace(/\?.*/, ''));
           extension = mime.getExtension(mediaType);
           const { dir } = content;
           this.options.images.push({ id, url, dir, mediaType, extension });
         }
-        return $(elem).attr("src", `images/${id}.${extension}`);
+        return $(elem).attr('src', `images/${id}.${extension}`);
       });
       content.data = $.xml();
       return content;
@@ -211,66 +207,57 @@ class EPub {
 
   render(): Promise<void> {
     if (this.options.verbose) {
-      console.log("Generating Template Files.....");
+      console.log('Generating Template Files.....');
     }
-    return new Promise((resolve, reject) => {
-      return this.generateTempFile().then(() => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await this.generateTempFile();
         if (this.options.verbose) {
-          console.log("Downloading Images...");
+          console.log('Downloading Images...');
         }
-        // return this.downloadAllImage().fin(
-        return this.downloadAllImage().then(() => {
-          if (this.options.verbose) {
-            console.log("Making Cover...");
-          }
-          return this.makeCover().then(() => {
-            if (this.options.verbose) {
-              console.log("Generating Epub Files...");
-            }
-            return this.genEpub().then((_res) => {
-              if (this.options.verbose) {
-                console.log("About to finish...");
-              }
-              resolve(_res);
-              if (this.options.verbose) {
-                return console.log("Done.");
-              }
-            },
-              (err) => reject(err)
-            );
-          },
-            (err) => reject(err)
-          );
-        },
-          (err) => reject(err)
-        );
-      },
-        (err) => reject(err)
-      );
+        await this.downloadAllImage();
+        if (this.options.verbose) {
+          console.log('Making Cover...');
+        }
+        await this.makeCover();
+        if (this.options.verbose) {
+          console.log('Generating Epub Files...');
+        }
+        let _res = await this.genEpub();
+        if (this.options.verbose) {
+          console.log('About to finish...');
+        }
+        resolve(_res);
+        if (this.options.verbose) {
+          return console.log('Done.');
+        }
+      }
+      catch (err) {
+        reject(err);
+      }
     });
   }
 
-  generateTempFile() {
+  generateTempFile(): Promise<void> {
     return new Promise((resolve, reject) => {
-
       if (!fs.existsSync(this.options.tempDir)) {
         fs.mkdirSync(this.options.tempDir);
       }
       fs.mkdirSync(this.uuid);
-      fs.mkdirSync(path.resolve(this.uuid, "./OEBPS"));
+      fs.mkdirSync(path.resolve(this.uuid, './OEBPS'));
       if (!this.options.css) {
-        this.options.css = fs.readFileSync(path.resolve(__dirname, "../templates/template.css"), { encoding: 'utf-8' });
+        this.options.css = fs.readFileSync(path.resolve(__dirname, '../templates/template.css'), { encoding: 'utf-8' });
       }
-      fs.writeFileSync(path.resolve(this.uuid, "./OEBPS/style.css"), this.options.css);
+      fs.writeFileSync(path.resolve(this.uuid, './OEBPS/style.css'), this.options.css);
       if (this.options.fonts.length) {
-        fs.mkdirSync(path.resolve(this.uuid, "./OEBPS/fonts"));
+        fs.mkdirSync(path.resolve(this.uuid, './OEBPS/fonts'));
         this.options.fonts = this.options.fonts.map((font) => {
           if (!fs.existsSync(font)) {
-            reject(new Error("Custom font not found at " + font + "."));
+            reject(new Error('Custom font not found at ' + font + '.'));
             return;
           }
           const filename = path.basename(font);
-          fs.copyFileSync(font, path.resolve(this.uuid, "./OEBPS/fonts/" + filename));
+          fs.copyFileSync(font, path.resolve(this.uuid, './OEBPS/fonts/' + filename));
           return filename;
         });
       }
@@ -278,7 +265,7 @@ class EPub {
         let data = `${this.options.docHeader}
         <head>
         <meta charset="UTF-8" />
-        <title>${entities.encodeXML(content.title || "")}</title>
+        <title>${entities.encodeXML(content.title || '')}</title>
         <link rel="stylesheet" type="text/css" href="style.css" />
         </head>
         <body>\
@@ -302,7 +289,7 @@ class EPub {
       });
 
       // write meta-inf/container.xml
-      fs.mkdirSync(this.uuid + "/META-INF");
+      fs.mkdirSync(this.uuid + '/META-INF');
       fs.writeFileSync(
         `${this.uuid}/META-INF/container.xml`,
         '<?xml version="1.0" encoding="UTF-8" ?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'
@@ -330,14 +317,14 @@ class EPub {
           `../templates/epub${this.options.version}/content.opf.ejs`
         );
       if (!fs.existsSync(opfPath)) {
-        return reject(new Error("Custom file to OPF template not found."));
+        return reject(new Error('Custom file to OPF template not found.'));
       }
 
       const ncxTocPath =
         this.options.customNcxTocTemplatePath ||
-        path.resolve(__dirname, "../templates/toc.ncx.ejs");
+        path.resolve(__dirname, '../templates/toc.ncx.ejs');
       if (!fs.existsSync(ncxTocPath)) {
-        return reject(new Error("Custom file the NCX toc template not found."));
+        return reject(new Error('Custom file the NCX toc template not found.'));
       }
 
       const htmlTocPath =
@@ -347,16 +334,16 @@ class EPub {
           `../templates/epub${this.options.version}/toc.xhtml.ejs`
         );
       if (!fs.existsSync(htmlTocPath)) {
-        return reject(new Error("Custom file to HTML toc template not found."));
+        return reject(new Error('Custom file to HTML toc template not found.'));
       }
       return Promise.all([
         new Promise(resolve => (ejs.renderFile(opfPath, this.options, (e, str) => resolve(str)))),
         new Promise(resolve => (ejs.renderFile(ncxTocPath, this.options, (e, str) => resolve(str)))),
         new Promise(resolve => (ejs.renderFile(htmlTocPath, this.options, (e, str) => resolve(str))))
       ]).then(([data1, data2, data3]) => {
-        fs.writeFileSync(path.resolve(this.uuid, "./OEBPS/content.opf"), data1);
-        fs.writeFileSync(path.resolve(this.uuid, "./OEBPS/toc.ncx"), data2);
-        fs.writeFileSync(path.resolve(this.uuid, "./OEBPS/toc.xhtml"), data3);
+        fs.writeFileSync(path.resolve(this.uuid, './OEBPS/content.opf'), data1);
+        fs.writeFileSync(path.resolve(this.uuid, './OEBPS/toc.ncx'), data2);
+        fs.writeFileSync(path.resolve(this.uuid, './OEBPS/toc.xhtml'), data3);
         return resolve();
       },
         (err) => {
@@ -369,32 +356,32 @@ class EPub {
 
   makeCover(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36";
+      const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36';
       if (this.options.cover) {
         const destPath = path.resolve(
           this.uuid,
-          "./OEBPS/cover." + this.options._coverExtension
+          './OEBPS/cover.' + this.options._coverExtension
         );
         let writeStream = null;
         //TODO: To be excluded (But how to grab http based images)?
-        if (this.options.cover.slice(0, 4) === "http") {
+        if (this.options.cover.slice(0, 4) === 'http') {
           writeStream = request
             .get(this.options.cover)
-            .set({ "User-Agent": userAgent });
+            .set({ 'User-Agent': userAgent });
           writeStream.pipe(fs.createWriteStream(destPath));
         } else {
           writeStream = fs.createReadStream(this.options.cover);
           writeStream.pipe(fs.createWriteStream(destPath));
         }
 
-        writeStream.on("end", () => {
+        writeStream.on('end', () => {
           if (this.options.verbose) {
-            console.log("[Success] cover image downloaded successfully!");
+            console.log('[Success] cover image downloaded successfully!');
           }
           return resolve();
         });
-        writeStream.on("error", (err) => {
-          console.error("Error", err);
+        writeStream.on('error', (err) => {
+          console.error('Error', err);
           return reject(err);
         });
       } else {
@@ -405,24 +392,24 @@ class EPub {
 
   getImage(options: IImage): Promise<IImage | null> {
     //{id, url, mediaType}
-    const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36";
-    if (!options.url && typeof options !== "string") {
+    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36';
+    if (!options.url && typeof options !== 'string') {
       console.warn('No {Options.url} provided ..');
       return Promise.resolve(null);
     }
     return new Promise((resolve, reject) => {
       const filename = path.resolve(
         this.uuid,
-        "./OEBPS/images/" + options.id + "." + options.extension
+        './OEBPS/images/' + options.id + '.' + options.extension
       );
-      if (options.url.indexOf("file://") === 0) {
+      if (options.url.indexOf('file://') === 0) {
         const auxpath = options.url.substr(7);
         fs.copyFileSync(auxpath, filename);
         return resolve(options);
       } else {
         let requestAction;
         //TODO: To be excluded (But how to grab http based images)?
-        if (options.url.indexOf("http") === 0) {
+        if (options.url.indexOf('http') === 0) {
           requestAction = request.get(options.url).set({
             'User-Agent': userAgent
           });
@@ -431,11 +418,11 @@ class EPub {
           requestAction = fs.createReadStream(path.resolve(options.dir, options.url));
           requestAction.pipe(fs.createWriteStream(filename));
         }
-        requestAction.on("error", (err) => {
+        requestAction.on('error', (err) => {
           if (this.options.verbose) {
             console.error(
-              "[Download Error]",
-              "Error while downloading",
+              '[Download Error]',
+              'Error while downloading',
               options.url,
               err
             );
@@ -444,9 +431,9 @@ class EPub {
           return reject(err);
         });
 
-        requestAction.on("end", () => {
+        requestAction.on('end', () => {
           if (this.options.verbose) {
-            console.log("[Download Success]", options.url);
+            console.log('[Download Success]', options.url);
           }
           return resolve(options);
         });
@@ -454,12 +441,12 @@ class EPub {
     });
   }
 
-  downloadAllImage(): Promise<unknown> {
+  downloadAllImage(): Promise<void> {
     return new Promise((resolve) => {
       if (!this.options.images?.length) {
         resolve();
       } else {
-        fs.mkdirSync(path.resolve(this.uuid, "./OEBPS/images"));
+        fs.mkdirSync(path.resolve(this.uuid, './OEBPS/images'));
         const deferArray: Array<Promise<unknown>> = [];
         this.options.images.forEach((image) =>
           deferArray.push(this.getImage(image))
@@ -480,18 +467,18 @@ class EPub {
     return new Promise((resolve, reject) => {
       const cwd = this.uuid;
 
-      const archive = archiver("zip", { zlib: { level: 9 } });
+      const archive = archiver('zip', { zlib: { level: 9 } });
       const output = fs.createWriteStream(this.options.output);
       if (this.options.verbose) {
-        console.log("Zipping temp dir to", this.options.output);
+        console.log('Zipping temp dir to', this.options.output);
       }
-      archive.append("application/epub+zip", { store: true, name: "mimetype" });
-      archive.directory(cwd + "/META-INF", "META-INF");
-      archive.directory(cwd + "/OEBPS", "OEBPS");
+      archive.append('application/epub+zip', { store: true, name: 'mimetype' });
+      archive.directory(cwd + '/META-INF', 'META-INF');
+      archive.directory(cwd + '/OEBPS', 'OEBPS');
       archive.pipe(output);
-      archive.on("end", () => {
+      archive.on('end', () => {
         if (this.options.verbose) {
-          console.log("Done zipping, clearing temp dir...");
+          console.log('Done zipping, clearing temp dir...');
         }
         return rimraf(cwd, (err) => {
           if (err) {
@@ -501,7 +488,7 @@ class EPub {
           }
         });
       });
-      archive.on("error", (err) => reject(err));
+      archive.on('error', (err) => reject(err));
       return archive.finalize();
     });
   }

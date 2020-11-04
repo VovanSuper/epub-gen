@@ -5,7 +5,7 @@ import cheerio from 'cheerio';
 import entities from 'entities';
 import request from 'superagent';
 require('superagent-proxy')(request);
-import { remove as removeDiacritics } from 'diacritics';
+import { normalizeSync as removeDiacritics } from 'normalize-diacritics';
 import mime from 'mime';
 import archiver from 'archiver';
 import { v4 } from 'uuid';
@@ -80,7 +80,8 @@ class EPub {
     this.options.images = [];
     this.options.content = this.options.content.map((content, index) => {
       if (!content.filename) {
-        const titleSlug = toId(removeDiacritics(content.title || 'no title'));
+        const normalizedTitle = removeDiacritics(content.title || 'no title');
+        const titleSlug = toId(normalizedTitle);
         content.href = `${index}_${titleSlug}.xhtml`;
         content.filePath = path.resolve(
           this.uuid,
@@ -174,9 +175,7 @@ class EPub {
       $('img').each((index, elem) => {
         let extension, id, image;
         const url = $(elem).attr('src');
-        if (
-          (image = this.options.images.find((element) => element.url === url))
-        ) {
+        if ((image = this.options.images.find((element) => element.url === url))) {
           ({ id } = image);
           ({ extension } = image);
         } else {

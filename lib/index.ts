@@ -1,6 +1,5 @@
 import path from 'path';
 import fs from 'fs';
-import ejs from 'ejs';
 import cheerio from 'cheerio';
 import entities from 'entities';
 import { normalizeSync as removeDiacritics } from 'normalize-diacritics';
@@ -19,20 +18,9 @@ class EPub {
   uuid: string;
 
   constructor(options: IPubOptions, output: string) {
-    this.options = options;
-
-    if (output) {
-      this.options.output = output;
-    }
-
-    if (!this.options.output) {
+    if (!output) {
       console.error(new Error('No Output Path'));
       throw new Error('No output path');
-    }
-
-    if (!options.title || !options.content) {
-      console.error(new Error('Title and content are both required'));
-      throw new Error('Title and content are both required');
     }
 
     this.options = {
@@ -48,8 +36,14 @@ class EPub {
       customNcxTocTemplatePath: null,
       customHtmlTocTemplatePath: null,
       version: 3,
+      output,
       ...options
     };
+
+    if (!options.title || !options.content) {
+      console.error(new Error('Title and content are both required'));
+      throw new Error('Title and content are both required');
+    }
 
     if (this.options.version === 2) {
       this.options.docHeader = `<?xml version="1.0" encoding="UTF-8"?>
@@ -275,7 +269,7 @@ class EPub {
         data +=
           content.title && content.author && content.author.length
             ? `<p class='epub-author'>${entities.encodeXML(
-              content.author.join(", ")
+              Array.isArray(content.author) ? content.author.join(", ") : content.author
             )}</p>`
             : "";
         data +=
@@ -308,36 +302,30 @@ class EPub {
         );
       }
 
-      const opfPath =
-        this.options.customOpfTemplatePath ||
-        path.resolve(
-          __dirname,
-          `../templates/epub${this.options.version}/content.opf.ejs`
-        );
-      if (!fs.existsSync(opfPath)) {
+      const opfPathTs = path.resolve(
+        __dirname,
+        `../templates2/epub${this.options.version}/content.opf.ts`
+      );
+      if (!fs.existsSync(opfPathTs)) {
         return reject(new Error('Custom file to OPF template not found.'));
       }
 
-      const ncxTocPath =
-        this.options.customNcxTocTemplatePath ||
-        path.resolve(__dirname, '../templates/toc.ncx.ejs');
-      if (!fs.existsSync(ncxTocPath)) {
+      const ncxTocPathTs = path.resolve(__dirname, '../templates2/toc.ncx.ts');
+      if (!fs.existsSync(ncxTocPathTs)) {
         return reject(new Error('Custom file the NCX toc template not found.'));
       }
 
-      const htmlTocPath =
-        this.options.customHtmlTocTemplatePath ||
-        path.resolve(
-          __dirname,
-          `../templates/epub${this.options.version}/toc.xhtml.ejs`
-        );
-      if (!fs.existsSync(htmlTocPath)) {
+      const htmlTocPathTs = path.resolve(
+        __dirname,
+        `../templates2/epub${this.options.version}/toc.xhtml.ts`
+      );
+      if (!fs.existsSync(htmlTocPathTs)) {
         return reject(new Error('Custom file to HTML toc template not found.'));
       }
       return Promise.all([
-        new Promise(resolve => (ejs.renderFile(opfPath, this.options, (e, str) => resolve(str)))),
-        new Promise(resolve => (ejs.renderFile(ncxTocPath, this.options, (e, str) => resolve(str)))),
-        new Promise(resolve => (ejs.renderFile(htmlTocPath, this.options, (e, str) => resolve(str))))
+        new Promise(resolve => import(opfPathTs).then(m => resolve(m.createContentOpfStr(this.options)))),
+        new Promise(resolve => import(ncxTocPathTs).then(m => resolve(m.createTocStr(this.options)))),
+        new Promise(resolve => import(htmlTocPathTs).then(m => resolve(m.createTocXhtmlStr(this.options)))),
       ]).then(([data1, data2, data3]) => {
         fs.writeFileSync(path.resolve(this.uuid, './OEBPS/content.opf'), data1);
         fs.writeFileSync(path.resolve(this.uuid, './OEBPS/toc.ncx'), data2);
@@ -354,7 +342,6 @@ class EPub {
 
   makeCover(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36';
       if (this.options.cover) {
         const destPath = path.resolve(
           this.uuid,
@@ -384,8 +371,6 @@ class EPub {
   }
 
   getImage(options: IImage): Promise<IImage | null> {
-    //{id, url, mediaType}
-    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36';
     if (!options.url && typeof options !== 'string') {
       console.warn('No {Options.url} provided ..');
       return Promise.resolve(null);
@@ -450,13 +435,6 @@ class EPub {
   }
 
   genEpub(): Promise<void> {
-    // Thanks to Paul Bradley
-    // http://www.bradleymedia.org/gzip-markdown-epub/ (404 as of 28.07.2016)
-    // Web Archive URL:
-    // http://web.archive.org/web/20150521053611/http://www.bradleymedia.org/gzip-markdown-epub
-    // or Gist:
-    // https://gist.github.com/cyrilis/8d48eef37fbc108869ac32eb3ef97bca
-
     return new Promise((resolve, reject) => {
       const cwd = this.uuid;
 

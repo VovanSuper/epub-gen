@@ -81,18 +81,18 @@ interface IPubOptions {
     dir?: string;
     excludeFromToc?: boolean;
     beforeToc?: boolean;
-    author?: string[];
+    author?: string | string[];
     css?: string;
     url?: string;
   }>;
   /**
    * @param {string} description
    */
-  description?: string
+  description?: string;
   /**
    * @param {string | Date} date
    */
-  date?: string
+  date?: string;
 }
 
 interface IOptsInternal {

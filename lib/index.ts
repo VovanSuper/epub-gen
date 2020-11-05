@@ -5,6 +5,7 @@ import cheerio from 'cheerio';
 import entities from 'entities';
 import { normalizeSync as removeDiacritics } from 'normalize-diacritics';
 import mime from 'mime';
+import { URL } from 'url';
 import archiver from 'archiver';
 import { v4 } from 'uuid';
 import rimraf from 'rimraf';

@@ -3,8 +3,6 @@ import fs from 'fs';
 import ejs from 'ejs';
 import cheerio from 'cheerio';
 import entities from 'entities';
-import request from 'superagent';
-require('superagent-proxy')(request);
 import { normalizeSync as removeDiacritics } from 'normalize-diacritics';
 import mime from 'mime';
 import archiver from 'archiver';
@@ -362,16 +360,11 @@ class EPub {
           './OEBPS/cover.' + this.options._coverExtension
         );
         let writeStream = null;
-        //TODO: To be excluded (But how to grab http based images)?
-        if (this.options.cover.slice(0, 4) === 'http') {
-          writeStream = request
-            .get(this.options.cover)
-            .set({ 'User-Agent': userAgent });
-          writeStream.pipe(fs.createWriteStream(destPath));
-        } else {
-          writeStream = fs.createReadStream(this.options.cover);
-          writeStream.pipe(fs.createWriteStream(destPath));
-        }
+        //NOTE: Excluded http protocol implementation (to grab http based cover)
+        let resolvedCover = path.resolve(this.options.cover);
+        writeStream = fs.createReadStream(resolvedCover);
+        writeStream.pipe(fs.createWriteStream(destPath));
+
 
         writeStream.on('end', () => {
           if (this.options.verbose) {
@@ -402,21 +395,21 @@ class EPub {
         './OEBPS/images/' + options.id + '.' + options.extension
       );
       if (options.url.indexOf('file://') === 0) {
-        const auxpath = options.url.substr(7);
+        let url = new URL(options.url);
+        let { hostname, pathname } = url;
+        // let auxpath = options.url.substr(7);
+        const auxpath = path.resolve(path.join(hostname, pathname));
+        if (!fs.existsSync(auxpath)) {
+          console.error('NO SUCH Image FILE:  ', auxpath);
+        }
         fs.copyFileSync(auxpath, filename);
         return resolve(options);
       } else {
         let requestAction;
-        //TODO: To be excluded (But how to grab http based images)?
-        if (options.url.indexOf('http') === 0) {
-          requestAction = request.get(options.url).set({
-            'User-Agent': userAgent
-          });
-          requestAction.pipe(fs.createWriteStream(filename));
-        } else {
-          requestAction = fs.createReadStream(path.resolve(options.dir, options.url));
-          requestAction.pipe(fs.createWriteStream(filename));
-        }
+        //NOTE: Excluded http protocol implementation (to grab http based images)
+        requestAction = fs.createReadStream(path.resolve(options.dir, options.url));
+        requestAction.pipe(fs.createWriteStream(filename));
+        // }
         requestAction.on('error', (err) => {
           if (this.options.verbose) {
             console.error(
@@ -450,7 +443,7 @@ class EPub {
         this.options.images.forEach((image) =>
           deferArray.push(this.getImage(image))
         );
-        Promise.all(deferArray).then(() => resolve());
+        Promise.all(deferArray).then(() => resolve()).catch(console.error);
       }
     });
   }

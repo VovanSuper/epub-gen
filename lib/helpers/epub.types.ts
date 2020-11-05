@@ -2,11 +2,11 @@ interface IPubOptions {
   /**
    * @param {string} title - Title of the book
    */
-  title: string;
+  title?: string;
   /**
    * @param {(string | Array<string>)} author - Name of the author for the book, string or array, eg. "Alice" or ["Alice", "Bob"]
    */
-  author: string | string[];
+  author?: string | string[];
   /**
    * @param {string} publisher - Publisher name (optional)
    */
@@ -14,7 +14,7 @@ interface IPubOptions {
   /**
    * @param {string} cover - Book cover image (optional), File path (absolute path) or web url, eg. "http://abc.com/book-cover.jpg" or "/User/Alice/images/book-cover.jpg"
    */
-  cover: string;
+  cover?: string;
   /**
    * @param {string} output - Out put path (absolute path), you can also path output as the second argument when use new , eg: new Epub(options, output)
    */
@@ -24,7 +24,7 @@ interface IPubOptions {
    * 3 the latest version (http://idpf.org/epub/30) or 2 the previous version (http://idpf.org/epub/201, for better compatibility with older readers).
    *  If not specified, will fallback to 3.
    */
-  version: 2 | 3 | number;
+  version?: 2 | 3 | number;
   /**
    * @param {number} css - If you really hate our css, you can pass css string to replace our default style. eg: "body{background: #000}"
    */
@@ -39,34 +39,34 @@ interface IPubOptions {
           src : url("./fonts/Merriweather.ttf");
       }
    */
-  fonts: string[];
+  fonts?: string[];
   /**
    * @param {string} [lang="en"] - Language of the book in 2 letters code (optional). If not specified, will fallback to en.
    */
-  lang: string;
+  lang?: string;
   /**
    * @param {string} tocTitle - Title of the table of contents. If not specified, will fallback to Table Of Contents.
    */
-  tocTitle: string;
+  tocTitle?: string;
   /**
    * @param {boolean} appendChapterTitles - Automatically append the chapter title at the beginning of each contents. You can disable that by specifying false.
    */
-  appendChapterTitles: boolean;
+  appendChapterTitles?: boolean;
   /**
    * @optional
    * @param {string} customOpfTemplatePath - Optional. For advanced customizations: absolute path to an OPF template.
    */
-  customOpfTemplatePath?: string;
+  customOpfTemplatePath?: string | null;
   /**
    * @optional
    * @param {string} customNcxTocTemplatePath -  Optional. For advanced customizations: absolute path to a NCX toc template.
    */
-  customNcxTocTemplatePath?: string;
+  customNcxTocTemplatePath?: string | null;
   /**
    * @optional
    * @param {string} customHtmlTocTemplatePath -  Optional. For advanced customizations: absolute path to a NCX toc template.
    */
-  customHtmlTocTemplatePath?: string;
+  customHtmlTocTemplatePath?: string | null;
   /**
    * @optional
    * @param {Array<object>} content -  Book Chapters content. It's should be an array of objects. eg. [{title: "Chapter 1",data: "<div>..."}, {data: ""},...]
@@ -97,8 +97,8 @@ interface IPubOptions {
 
 interface IOptsInternal {
   id: string;
-  uuid: string;
-  images: Array<IImage>;
+  uuid?: string;
+  images?: Array<IImage>;
   docHeader?: string;
   tempDir: string | undefined;
   verbose: boolean;

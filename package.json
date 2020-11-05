@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "A library to generate EPUB from HTML",
   "main": "index.js",
+  "engines": {
+    "node": ">14.4.0",
+    "npm": ">6.13.4"
+  },
   "scripts": {
     "compile": "coffee --compile --output ./ ./",
     "test": "node test",
@@ -33,11 +37,10 @@
     "entities": "^1.1.2",
     "mime": "^2.4.0",
     "normalize-diacritics": "^2.12.0",
-    "superagent": "^3.8.3",
-    "superagent-proxy": "^2.0.0",
     "uuid": "^8.3.1"
   },
   "devDependencies": {
+    "@tsconfig/node14": "^1.0.0",
     "@types/archiver": "^3.1.1",
     "@types/cheerio": "^0.22.22",
     "@types/ejs": "^3.0.5",
@@ -45,7 +48,6 @@
     "@types/jest": "^26.0.15",
     "@types/mime": "^2.0.3",
     "@types/rimraf": "^3.0.0",
-    "@types/superagent": "^4.1.10",
     "@types/uuid": "^8.3.0",
     "coffeescript": "^2.5.1",
     "jest": "^26.6.2",

@@ -19,8 +19,8 @@ describe('initial test', () => {
         rimraf(renderOutputDir, { maxBusyTries: 5 }, l);
     });
     beforeEach(async () => {
-      return await new Promise(async resolve => {
-        let bookGenRes = await fork(testBookGenScript);
+      return await new Promise(resolve => {
+        let bookGenRes = fork(testBookGenScript);
         bookGenRes.on('message', (c, s) => l({ c, s }));
         bookGenRes.on('error', (e) => err({ e }));
         bookGenRes.on('close', (c, s) => resolve(bookGenRes));
@@ -28,7 +28,7 @@ describe('initial test', () => {
     });
 
 
-    it('temp dir shouldnt exist', async () => {
+    it('test epub should be (re)generated', async () => {
       expect(existsSync(bookEpub)).toBeTruthy();
     });
   });

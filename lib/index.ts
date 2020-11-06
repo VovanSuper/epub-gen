@@ -57,11 +57,11 @@ class EPub {
 `;
     }
 
-    if (isString(this.options.author)) {
-      this.options.author = [this.options.author];
-    }
     if (isEmpty(this.options.author)) {
       this.options.author = ['anonymous'];
+    }
+    if (isString(this.options.author)) {
+      this.options.author = [this.options.author];
     }
     if (!this.options.tempDir) {
       this.options.tempDir = path.resolve(__dirname, '../tempDir/');
@@ -206,7 +206,7 @@ class EPub {
       if (this.options.verbose) {
         console.log('Downloading Images...');
       }
-      await this.downloadAllImage();
+      this.downloadAllImage();
       if (this.options.verbose) {
         console.log('Making Cover...');
       }
@@ -252,7 +252,7 @@ class EPub {
         });
       }
       this.options.content.forEach((content) => {
-        let data = `${this.options.docHeader}
+        let dataHead = `${this.options.docHeader}
         <head>
         <meta charset="UTF-8" />
         <title>${entities.encodeXML(content.title || '')}</title>
@@ -260,21 +260,21 @@ class EPub {
         </head>
         <body>\
 `;
-        data +=
+        let cTitle =
           content.title && this.options.appendChapterTitles
             ? `<h1>${entities.encodeXML(content.title)}</h1>`
             : "";
-        data +=
+        let cAuthor =
           content.title && content.author && content.author.length
             ? `<p class='epub-author'>${entities.encodeXML(
               Array.isArray(content.author) ? content.author.join(", ") : content.author
             )}</p>`
             : "";
-        data +=
+        let cUrl =
           content.title && content.url
             ? `<p class='epub-link'><a href='${content.url}'>${content.url}</a></p>`
             : "";
-        data += `${content.data}</body></html>`;
+        let data = [dataHead, cTitle, cAuthor, cUrl, `${content.data}</body></html>`].join('');
         return fs.writeFileSync(content.filePath, data);
       });
 
@@ -367,66 +367,41 @@ class EPub {
     });
   }
 
-  getImage(options: IImage): Promise<IImage | null> {
+  getImage(options: IImage): IImage | null {
     if (!options.url && typeof options !== 'string') {
       console.warn('No {Options.url} provided ..');
-      return Promise.resolve(null);
+      return null;
     }
-    return new Promise((resolve, reject) => {
-      const filename = path.resolve(
-        this.uuid,
-        './OEBPS/images/' + options.id + '.' + options.extension
-      );
-      if (options.url.indexOf('file://') === 0) {
-        let url = new URL(options.url);
-        let { hostname, pathname } = url;
-        // let auxpath = options.url.substr(7);
-        const auxpath = path.resolve(path.join(hostname, pathname));
-        if (!fs.existsSync(auxpath)) {
-          console.error('NO SUCH Image FILE:  ', auxpath);
-        }
-        fs.copyFileSync(auxpath, filename);
-        return resolve(options);
-      } else {
-        let requestAction;
-        //NOTE: Excluded http protocol implementation (to grab http based images)
-        requestAction = fs.createReadStream(path.resolve(options.dir, options.url));
-        requestAction.pipe(fs.createWriteStream(filename));
-        // }
-        requestAction.on('error', (err) => {
-          if (this.options.verbose) {
-            console.error(
-              '[Download Error]',
-              'Error while downloading',
-              options.url,
-              err
-            );
-          }
-          fs.unlinkSync(filename);
-          return reject(err);
-        });
-
-        requestAction.on('end', () => {
-          if (this.options.verbose) {
-            console.log('[Download Success]', options.url);
-          }
-          return resolve(options);
-        });
-      }
-    });
+    const filename = path.resolve(
+      this.uuid,
+      './OEBPS/images/' + options.id + '.' + options.extension
+    );
+    let url = new URL(options.url);
+    if (url.protocol !== 'file:') {
+      throw new Error(`Support only "file:" protocol for assets::  ${options.url}`);
+    }
+    // if (options.url.indexOf('file://') === 0) {
+    let { hostname, pathname } = url;
+    // let auxpath = options.url.substr(7);
+    const auxpath = path.resolve(path.join(hostname, pathname));
+    if (!fs.existsSync(auxpath)) {
+      console.error('NO SUCH Image FILE:  ', auxpath);
+    }
+    fs.copyFileSync(auxpath, filename);
+    return options;
   }
 
-  async downloadAllImage(): Promise<unknown> {
+  downloadAllImage(): unknown {
     try {
       if (!this.options.images?.length) {
         return;
       } else {
         fs.mkdirSync(path.resolve(this.uuid, './OEBPS/images'));
-        const deferArray: Array<Promise<unknown>> = [];
+        const deferArray = [];
         this.options.images.forEach((image) =>
           deferArray.push(this.getImage(image))
         );
-        return await Promise.all(deferArray);
+        return deferArray;
       }
     } catch (e) {
       console.error(e);

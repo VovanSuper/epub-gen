@@ -24,7 +24,7 @@ interface IPubOptions {
    * 3 the latest version (http://idpf.org/epub/30) or 2 the previous version (http://idpf.org/epub/201, for better compatibility with older readers).
    *  If not specified, will fallback to 3.
    */
-  version?: 2 | 3 | number;
+  version?: 2 | 3;
   /**
    * @param {number} css - If you really hate our css, you can pass css string to replace our default style. eg: "body{background: #000}"
    */

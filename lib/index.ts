@@ -197,55 +197,53 @@ class EPub {
     return this.render();
   }
 
-  render(): Promise<void> {
+  async render(): Promise<void> {
     if (this.options.verbose) {
       console.log('Generating Template Files.....');
     }
-    return new Promise(async (resolve, reject) => {
-      try {
-        await this.generateTempFile();
-        if (this.options.verbose) {
-          console.log('Downloading Images...');
-        }
-        await this.downloadAllImage();
-        if (this.options.verbose) {
-          console.log('Making Cover...');
-        }
-        await this.makeCover();
-        if (this.options.verbose) {
-          console.log('Generating Epub Files...');
-        }
-        let _res = await this.genEpub();
-        if (this.options.verbose) {
-          console.log('About to finish...');
-        }
-        resolve(_res);
-        if (this.options.verbose) {
-          return console.log('Done.');
-        }
+    try {
+      await this.generateTempFile();
+      if (this.options.verbose) {
+        console.log('Downloading Images...');
       }
-      catch (err) {
-        reject(err);
+      await this.downloadAllImage();
+      if (this.options.verbose) {
+        console.log('Making Cover...');
       }
-    });
+      await this.makeCover();
+      if (this.options.verbose) {
+        console.log('Generating Epub Files...');
+      }
+      let _res = await this.genEpub();
+      if (this.options.verbose) {
+        console.log('About to finish...');
+      }
+      if (this.options.verbose) {
+        return console.log('Done.');
+      }
+      return _res;
+    }
+    catch (err) {
+      throw new Error(err);
+    }
   }
 
-  generateTempFile(): Promise<void> {
-    return new Promise((resolve, reject) => {
+  async generateTempFile(): Promise<void> {
+    try {
       if (!fs.existsSync(this.options.tempDir)) {
         fs.mkdirSync(this.options.tempDir);
       }
       fs.mkdirSync(this.uuid);
       fs.mkdirSync(path.resolve(this.uuid, './OEBPS'));
       if (!this.options.css) {
-        this.options.css = fs.readFileSync(path.resolve(__dirname, '../templates/template.css'), { encoding: 'utf-8' });
+        this.options.css = fs.readFileSync(path.resolve(__dirname, '../templates2/template.css'), { encoding: 'utf-8' });
       }
       fs.writeFileSync(path.resolve(this.uuid, './OEBPS/style.css'), this.options.css);
       if (this.options.fonts.length) {
         fs.mkdirSync(path.resolve(this.uuid, './OEBPS/fonts'));
         this.options.fonts = this.options.fonts.map((font) => {
           if (!fs.existsSync(font)) {
-            reject(new Error('Custom font not found at ' + font + '.'));
+            throw new Error('Custom font not found at ' + font + '.');
             return;
           }
           const filename = path.basename(font);
@@ -307,12 +305,12 @@ class EPub {
         `../templates2/epub${this.options.version}/content.opf.ts`
       );
       if (!fs.existsSync(opfPathTs)) {
-        return reject(new Error('Custom file to OPF template not found.'));
+        throw new Error('Custom file to OPF template not found.');
       }
 
       const ncxTocPathTs = path.resolve(__dirname, '../templates2/toc.ncx.ts');
       if (!fs.existsSync(ncxTocPathTs)) {
-        return reject(new Error('Custom file the NCX toc template not found.'));
+        throw new Error('Custom file the NCX toc template not found.');
       }
 
       const htmlTocPathTs = path.resolve(
@@ -320,9 +318,9 @@ class EPub {
         `../templates2/epub${this.options.version}/toc.xhtml.ts`
       );
       if (!fs.existsSync(htmlTocPathTs)) {
-        return reject(new Error('Custom file to HTML toc template not found.'));
+        throw new Error('Custom file to HTML toc template not found.');
       }
-      return Promise.all([
+      return await Promise.all([
         new Promise(resolve => import(opfPathTs).then(m => resolve(m.createContentOpfStr(this.options)))),
         new Promise(resolve => import(ncxTocPathTs).then(m => resolve(m.createTocStr(this.options)))),
         new Promise(resolve => import(htmlTocPathTs).then(m => resolve(m.createTocXhtmlStr(this.options)))),
@@ -330,14 +328,13 @@ class EPub {
         fs.writeFileSync(path.resolve(this.uuid, './OEBPS/content.opf'), data1);
         fs.writeFileSync(path.resolve(this.uuid, './OEBPS/toc.ncx'), data2);
         fs.writeFileSync(path.resolve(this.uuid, './OEBPS/toc.xhtml'), data3);
-        return resolve();
-      },
-        (err) => {
-          console.error(err);
-          return reject(err);
-        }
-      );
-    });
+        return void 0;
+      });
+
+    } catch (e) {
+      console.error(e);
+      throw new Error(e);
+    }
   }
 
   makeCover(): Promise<void> {
@@ -419,19 +416,22 @@ class EPub {
     });
   }
 
-  downloadAllImage(): Promise<void> {
-    return new Promise((resolve) => {
+  async downloadAllImage(): Promise<unknown> {
+    try {
       if (!this.options.images?.length) {
-        resolve();
+        return;
       } else {
         fs.mkdirSync(path.resolve(this.uuid, './OEBPS/images'));
         const deferArray: Array<Promise<unknown>> = [];
         this.options.images.forEach((image) =>
           deferArray.push(this.getImage(image))
         );
-        Promise.all(deferArray).then(() => resolve()).catch(console.error);
+        return await Promise.all(deferArray);
       }
-    });
+    } catch (e) {
+      console.error(e);
+      throw new Error(e);
+    }
   }
 
   genEpub(): Promise<void> {

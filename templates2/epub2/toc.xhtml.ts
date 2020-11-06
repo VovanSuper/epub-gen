@@ -7,7 +7,7 @@ export const createTocXhtmlStr = ({ title, content, tocTitle, lang }: Partial<IP
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xml:lang="${lang}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <title>${encodeXML(title)}</title>
+    <title>${encodeXML(title!)}</title>
     <meta charset="UTF-8" />
     <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
@@ -18,12 +18,12 @@ export const createTocXhtmlStr = ({ title, content, tocTitle, lang }: Partial<IP
 </html>
 `).trim();
 
-const renderContents = (ctx: IPubOptions['content']) => ctx.map((cs, index) => (
+const renderContents = (ctx: IPubOptions['content']) => ctx?.map((cs, index) => (
   !cs.excludeFromToc && renderTableOfContentsItem({
-    href: cs.href,
+    href: cs.href!,
     title: cs.title,
-    author: cs.author,
-    url: cs.url,
+    author: cs.author!,
+    url: cs.url!,
     index
   })
 )).join(EOL);

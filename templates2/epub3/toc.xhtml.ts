@@ -7,7 +7,7 @@ export const createTocXhtmlStr = ({ title, content, tocTitle, lang }: Partial<IP
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${lang}" lang="${lang}">
 <head>
-    <title>${encodeXML(title)}</title>
+    <title>${encodeXML(title!)}</title>
     <meta charset="UTF-8" />
     <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
@@ -22,12 +22,12 @@ export const createTocXhtmlStr = ({ title, content, tocTitle, lang }: Partial<IP
 </html>
 `).trim();
 
-const renderContents = (ctx: IPubOptions['content']) => ctx.map((cs, index) => (
+const renderContents = (ctx: IPubOptions['content'] = []) => ctx.map((cs, index) => (
   ((!cs.excludeFromToc && cs.beforeToc) || (!cs.excludeFromToc && !cs.beforeToc)) && renderOlItem({
-    href: cs.href,
+    href: cs.href!,
     title: cs.title,
-    author: cs.author,
-    url: cs.url,
+    author: cs.author!,
+    url: cs.url!,
     index
   })
 )).join(EOL);

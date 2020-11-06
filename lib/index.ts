@@ -13,11 +13,11 @@ import { EpubOptions, IPubOptions, isEmpty, isString, IImage, allowedAttributes,
 
 class EPub {
   options: EpubOptions;
-  name: string;
+  name: string = '';
   id: string;
   uuid: string;
 
-  constructor(options: IPubOptions, output: string) {
+  constructor(options: IPubOptions, output: string = __dirname) {
     if (!output) {
       console.error(new Error('No Output Path'));
       throw new Error('No output path');
@@ -39,6 +39,7 @@ class EPub {
       output,
       ...options
     };
+
 
     if (!options.title || !options.content) {
       console.error(new Error('Title and content are both required'));
@@ -71,7 +72,7 @@ class EPub {
     this.options.uuid = this.uuid;
     this.options.id = this.id;
     this.options.images = [];
-    this.options.content = this.options.content.map((content, index) => {
+    this.options.content = this.options.content?.map((content, index) => {
       if (!content.filename) {
         const normalizedTitle = removeDiacritics(content.title || 'no title');
         const titleSlug = toId(normalizedTitle);
@@ -124,7 +125,7 @@ class EPub {
 
       // Only body innerHTML is allowed
       if ($('body').length) {
-        $ = cheerio.load($('body').html(), {
+        $ = cheerio.load(<string>$('body').html(), {
           lowerCaseTags: true,
           recognizeSelfClosing: true,
         });
@@ -168,15 +169,16 @@ class EPub {
       $('img').each((index, elem) => {
         let extension, id, image;
         const url = $(elem).attr('src');
-        if ((image = this.options.images.find((element) => element.url === url))) {
+        if (!!!url) return;
+        if ((image = this.options.images?.find((element) => element.url === url))) {
           ({ id } = image);
           ({ extension } = image);
         } else {
           id = v4();
-          const mediaType = mime.getType(url.replace(/\?.*/, ''));
-          extension = mime.getExtension(mediaType);
+          const mediaType = mime.getType(url.replace(/\?.*/, '')) ?? '';
+          extension = mime.getExtension(mediaType!) ?? '';
           const { dir } = content;
-          this.options.images.push({ id, url, dir, mediaType, extension });
+          this.options.images?.push({ id, url, dir, mediaType, extension });
         }
         return $(elem).attr('src', `images/${id}.${extension}`);
       });
@@ -186,9 +188,7 @@ class EPub {
 
     if (this.options.cover) {
       this.options._coverMediaType = mime.getType(this.options.cover);
-      this.options._coverExtension = mime.getExtension(
-        this.options._coverMediaType
-      );
+      this.options._coverExtension = mime.getExtension(this.options._coverMediaType ?? '');
     }
 
   }
@@ -230,8 +230,8 @@ class EPub {
 
   async generateTempFile(): Promise<void> {
     try {
-      if (!fs.existsSync(this.options.tempDir)) {
-        fs.mkdirSync(this.options.tempDir);
+      if (!fs.existsSync(this.options.tempDir!)) {
+        fs.mkdirSync(this.options.tempDir!);
       }
       fs.mkdirSync(this.uuid);
       fs.mkdirSync(path.resolve(this.uuid, './OEBPS'));
@@ -239,19 +239,18 @@ class EPub {
         this.options.css = fs.readFileSync(path.resolve(__dirname, '../templates2/template.css'), { encoding: 'utf-8' });
       }
       fs.writeFileSync(path.resolve(this.uuid, './OEBPS/style.css'), this.options.css);
-      if (this.options.fonts.length) {
+      if (!!this.options.fonts?.length) {
         fs.mkdirSync(path.resolve(this.uuid, './OEBPS/fonts'));
         this.options.fonts = this.options.fonts.map((font) => {
           if (!fs.existsSync(font)) {
             throw new Error('Custom font not found at ' + font + '.');
-            return;
           }
           const filename = path.basename(font);
           fs.copyFileSync(font, path.resolve(this.uuid, './OEBPS/fonts/' + filename));
           return filename;
         });
       }
-      this.options.content.forEach((content) => {
+      this.options.content?.forEach((content) => {
         let dataHead = `${this.options.docHeader}
         <head>
         <meta charset="UTF-8" />
@@ -275,6 +274,7 @@ class EPub {
             ? `<p class='epub-link'><a href='${content.url}'>${content.url}</a></p>`
             : "";
         let data = [dataHead, cTitle, cAuthor, cUrl, `${content.data}</body></html>`].join('');
+        if (!content.filePath) throw `No File path :: ${content.filePath}`;
         return fs.writeFileSync(content.filePath, data);
       });
 
@@ -368,7 +368,7 @@ class EPub {
   }
 
   getImage(options: IImage): IImage | null {
-    if (!options.url && typeof options !== 'string') {
+    if (!options.url) {
       console.warn('No {Options.url} provided ..');
       return null;
     }
@@ -397,7 +397,7 @@ class EPub {
         return;
       } else {
         fs.mkdirSync(path.resolve(this.uuid, './OEBPS/images'));
-        const deferArray = [];
+        const deferArray: Array<IImage | null> = [];
         this.options.images.forEach((image) =>
           deferArray.push(this.getImage(image))
         );
@@ -414,7 +414,7 @@ class EPub {
       const cwd = this.uuid;
 
       const archive = archiver('zip', { zlib: { level: 9 } });
-      const output = fs.createWriteStream(this.options.output);
+      const output = fs.createWriteStream(this.options.output!);
       if (this.options.verbose) {
         console.log('Zipping temp dir to', this.options.output);
       }

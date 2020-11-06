@@ -18,7 +18,7 @@ interface IPubOptions {
   /**
    * @param {string} output - Out put path (absolute path), you can also path output as the second argument when use new , eg: new Epub(options, output)
    */
-  output: string;
+  output?: string;
   /**
    * @param {number} [version="3"] - You can specify the version of the generated EPUB, 
    * 3 the latest version (http://idpf.org/epub/30) or 2 the previous version (http://idpf.org/epub/201, for better compatibility with older readers).

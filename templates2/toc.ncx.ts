@@ -35,15 +35,15 @@ export const createTocStr = ({ id, title, author, content, tocTitle }: Partial<E
   `
 ).trim();
 
-const renderContentStrBeforeToc = ({ content }: Partial<IPubOptions>) => content.map((sc, index) => {
+const renderContentStrBeforeToc = ({ content }: Partial<IPubOptions>) => content?.map((sc, index) => {
   if (!sc.excludeFromToc && sc.beforeToc) {
-    return renderContentLine({ index, id: sc.id, title: sc.title, href: sc.href });
+    return renderContentLine({ index, id: sc.id!, title: sc.title, href: sc.href! });
   }
 }).join(EOL);
 
-const renderContentStrAfterToc = ({ content }: Partial<IPubOptions>) => content.map((sc, index) => {
+const renderContentStrAfterToc = ({ content }: Partial<IPubOptions>) => content?.map((sc, index) => {
   if (!sc.excludeFromToc && !sc.beforeToc) {
-    return renderContentLine({ index, id: sc.id, title: sc.title, href: sc.href });
+    return renderContentLine({ index, id: sc.id!, title: sc.title, href: sc.href! });
   }
 }).join(EOL);
 
